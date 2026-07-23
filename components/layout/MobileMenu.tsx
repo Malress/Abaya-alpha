@@ -3,11 +3,11 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useStore } from "@/components/providers/StoreProvider";
-import { categorySlug } from "@/lib/slug";
+import { categorySlug, slugify } from "@/lib/slug";
 import { IconClose } from "@/components/ui/icons";
 
 export default function MobileMenu() {
-  const { menuOpen, setMenuOpen, categories, config, locale, setLocale, tx, t } =
+  const { menuOpen, setMenuOpen, categories, pages, config, locale, setLocale, tx, t } =
     useStore();
 
   useEffect(() => {
@@ -26,6 +26,10 @@ export default function MobileMenu() {
   const topCats = categories
     .filter((c) => !c.is_child)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const menuPages = (pages || []).filter(
+    (p) => String(p.placement) === "1" || p.placement === 1,
+  );
 
   return (
     <>
@@ -55,6 +59,13 @@ export default function MobileMenu() {
             >
               {t("home")}
             </Link>
+            <Link
+              href="/shop"
+              onClick={() => setMenuOpen(false)}
+              style={menuLink}
+            >
+              {tx("Shop All", "تسوق الكل")}
+            </Link>
             {topCats.map((c) => (
               <Link
                 key={c.id}
@@ -65,6 +76,19 @@ export default function MobileMenu() {
                 {tx(c.name, c.ar_name)}
               </Link>
             ))}
+            {menuPages.map((p, i) => (
+              <Link
+                key={i}
+                href={`/pages/${slugify(p.title)}`}
+                onClick={() => setMenuOpen(false)}
+                style={menuLink}
+              >
+                {tx(p.title, p.title_ar)}
+              </Link>
+            ))}
+            <Link href="/contact" onClick={() => setMenuOpen(false)} style={menuLink}>
+              {tx("Contact Us", "اتصل بنا")}
+            </Link>
             <Link href="/track" onClick={() => setMenuOpen(false)} style={menuLink}>
               {t("trackOrder")}
             </Link>

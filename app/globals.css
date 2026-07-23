@@ -277,7 +277,7 @@ h4 {
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-md);
   transition: border-color 0.2s;
 }
 .input:focus,
@@ -314,7 +314,7 @@ h4 {
   padding: 6px 10px;
   background: var(--ink);
   color: #fff;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
 }
 .badge-sale {
   background: var(--discount);
@@ -555,7 +555,7 @@ h4 {
   color: var(--ink);
   border-radius: var(--radius-pill);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
@@ -639,7 +639,7 @@ h4 {
   border-radius: var(--radius-md);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   text-decoration: none;
   display: flex;
@@ -660,7 +660,7 @@ h4 {
   align-items: center;
   justify-content: center;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   padding: 0 16px;
   border: none;

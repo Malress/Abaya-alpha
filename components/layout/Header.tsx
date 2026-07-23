@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/components/providers/StoreProvider";
 import { useCart } from "@/components/providers/CartProvider";
-import { categorySlug } from "@/lib/slug";
+import { categorySlug, slugify } from "@/lib/slug";
 import {
   IconBag,
   IconMenu,
@@ -18,6 +18,7 @@ export default function Header() {
   const {
     config,
     categories,
+    pages,
     locale,
     setLocale,
     tx,
@@ -30,10 +31,15 @@ export default function Header() {
   const pathname = usePathname();
 
   const wordmark = tx(config.name, config.ar_name) || "Store";
+  const logo = tx(config.logo, config.logo_ar) || config.logo;
   const topCats = categories
     .filter((c) => !c.is_child)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .slice(0, 7);
+
+  const menuPages = (pages || []).filter(
+    (p) => String(p.placement) === "1" || p.placement === 1,
+  );
 
   return (
     <header className="header">
@@ -50,15 +56,19 @@ export default function Header() {
             </button>
             
             <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Link href="/" className="nav-action">
+                <span>{t("home")}</span>
+              </Link>
+
               <Link href="/shop" className="nav-action">
                 <span>{tx("Shop All", "تسوق الكل")}</span>
               </Link>
 
               <div className="nav-dropdown">
-                <button className="nav-action" style={{ cursor: "pointer" }}>
+                <Link href="/shop?tab=categories" className="nav-action">
                   <span>{tx("Categories", "الفئات")}</span>
                   <IconChevronDown width={14} height={14} />
-                </button>
+                </Link>
                 <div className="nav-dropdown-content">
                   {topCats.map((c, i) => (
                     <Link key={`${c.id}-${i}`} href={`/category/${categorySlug(c)}`} className="nav-dropdown-item">
@@ -68,50 +78,25 @@ export default function Header() {
                 </div>
               </div>
 
-              <div className="nav-dropdown">
-                <button className="nav-action" style={{ cursor: "pointer" }}>
-                  <span>{tx("Contact Us", "اتصل بنا")}</span>
-                  <IconChevronDown width={14} height={14} />
-                </button>
-                <div className="nav-dropdown-content">
-                  {branches?.[0] && (
-                    <div className="nav-dropdown-item" style={{ pointerEvents: "none", opacity: 0.6 }}>
-                      {tx(branches[0].name, branches[0].ar_name)}
-                      {branches[0].area ? `, ${branches[0].area}` : ""}
-                    </div>
-                  )}
-                  {config.contact_number && (
-                    <a href={`tel:${config.contact_number}`} className="nav-dropdown-item">
-                      {config.contact_number}
-                    </a>
-                  )}
-                  {config.email && (
-                    <a href={`mailto:${config.email}`} className="nav-dropdown-item">
-                      {config.email}
-                    </a>
-                  )}
-                  {config.instagram_link && (
-                    <a href={config.instagram_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
-                      Instagram
-                    </a>
-                  )}
-                  {config.whatsapp_link && (
-                    <a href={config.whatsapp_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
-                      WhatsApp
-                    </a>
-                  )}
-                  {config.tiktok_link && (
-                    <a href={config.tiktok_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
-                      TikTok
-                    </a>
-                  )}
-                </div>
-              </div>
+              {/* Dynamic menu pages configured in store settings (placement === 1) */}
+              {menuPages.map((p, i) => (
+                <Link key={i} href={`/pages/${slugify(p.title)}`} className="nav-action">
+                  <span>{tx(p.title, p.title_ar)}</span>
+                </Link>
+              ))}
+
+              <Link href="/contact" className="nav-action">
+                <span>{tx("Contact Us", "اتصل بنا")}</span>
+              </Link>
             </div>
           </div>
 
           <Link href="/" className="header__wordmark">
-            {wordmark}
+            {logo ? (
+              <img src={logo} alt={wordmark} style={{ height: "68px", objectFit: "contain", borderRadius: "16px" }} />
+            ) : (
+              wordmark
+            )}
           </Link>
 
           <div className="header__right">

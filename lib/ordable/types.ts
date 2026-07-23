@@ -126,8 +126,8 @@ export interface Branch {
   remove_delivery_charge_from_vat?: boolean;
   disable_cash?: boolean;
   minimum_order_pickup?: number;
-  country?: string;
-  area?: string;
+  country?: string | { name?: string; ar_name?: string };
+  area?: string | { name?: string; ar_name?: string };
   sort_order?: number;
 }
 

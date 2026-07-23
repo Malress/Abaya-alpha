@@ -83,8 +83,58 @@ export default function CheckoutView({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const dialCode = countries[0]?.dial_code;
-  const homeCountry = countries[0];
+  const activeCountries = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; ar_name?: string }>();
+    for (const a of areas) {
+      if (a.country?.name && !map.has(a.country.name)) {
+        map.set(a.country.name, {
+          id: a.country.name,
+          name: a.country.name,
+          ar_name: a.country.ar_name,
+        });
+      }
+    }
+    if (map.size === 0 && countries.length > 0) {
+      for (const c of countries) {
+        if (c.name && !map.has(c.name)) {
+          map.set(c.name, { id: c.name, name: c.name, ar_name: c.ar_name });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [areas, countries]);
+
+  const [selectedCountry, setSelectedCountry] = useState<string>(
+    () => activeCountries[0]?.id || countries[0]?.name || "Kuwait"
+  );
+
+  const selectedCountryObj = useMemo(() => {
+    return (
+      countries.find((c) => c.name === selectedCountry || c.ar_name === selectedCountry) ||
+      countries[0]
+    );
+  }, [countries, selectedCountry]);
+
+  const dialCode = selectedCountryObj?.dial_code || countries[0]?.dial_code;
+
+  const filteredAreas = useMemo(() => {
+    if (activeCountries.length <= 1) return areas;
+    return areas.filter((a) => a.country?.name === selectedCountry || !a.country?.name);
+  }, [areas, activeCountries, selectedCountry]);
+
+  const groupedAreas = useMemo(() => {
+    const map = new Map<string, Area[]>();
+    for (const a of filteredAreas) {
+      const pName = tx(a.province?.name, a.province?.ar_name) || tx("All Areas", "جميع المناطق");
+      if (!map.has(pName)) map.set(pName, []);
+      map.get(pName)!.push(a);
+    }
+    const res: { province: string; areas: Area[] }[] = [];
+    map.forEach((areasList, province) => {
+      res.push({ province, areas: areasList });
+    });
+    return res;
+  }, [filteredAreas, tx]);
 
   // Sign-in status + balances
   useEffect(() => {
@@ -281,9 +331,10 @@ export default function CheckoutView({
   const sectionStyle: React.CSSProperties = {
     background: "var(--surface)",
     border: "1px solid var(--line)",
-    borderRadius: "var(--radius-xs)",
-    padding: "22px 22px 24px",
+    borderRadius: "var(--radius-lg)",
+    padding: "24px",
     marginBottom: 20,
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.03)",
   };
 
   return (
@@ -359,6 +410,33 @@ export default function CheckoutView({
             <span className="label" style={{ marginBottom: 12, display: "block" }}>
               {t("address")}
             </span>
+            {activeCountries.length > 1 && (
+              <div className="field" style={{ marginBottom: 14 }}>
+                <label>{tx("Country", "الدولة")}</label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    className="select"
+                    style={{ appearance: "none", paddingInlineEnd: 34 }}
+                    value={selectedCountry}
+                    onChange={(e) => {
+                      setSelectedCountry(e.target.value);
+                      setAreaId(null);
+                    }}
+                  >
+                    {activeCountries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {tx(c.name, c.ar_name)}
+                      </option>
+                    ))}
+                  </select>
+                  <IconChevronDown
+                    width={16}
+                    height={16}
+                    style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }}
+                  />
+                </div>
+              </div>
+            )}
             <div className="field" style={{ marginBottom: 14 }}>
               <label>{t("area")}</label>
               <div style={{ position: "relative" }}>
@@ -369,10 +447,14 @@ export default function CheckoutView({
                   onChange={(e) => setAreaId(e.target.value ? Number(e.target.value) : null)}
                 >
                   <option value="">{t("selectArea")}</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {tx(a.name, a.ar_name)}
-                    </option>
+                  {groupedAreas.map((g) => (
+                    <optgroup key={g.province} label={g.province}>
+                      {g.areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {tx(a.name, a.ar_name)}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
                 <IconChevronDown width={16} height={16} style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }} />
@@ -413,7 +495,7 @@ export default function CheckoutView({
             <div className="row" style={{ gap: 8 }}>
               {dialCode && (
                 <span className="pill" dir="ltr" style={{ whiteSpace: "nowrap" }}>
-                  {homeCountry?.flag} {dialCode}
+                  {selectedCountryObj?.flag ? `${selectedCountryObj.flag} ` : ""}{dialCode}
                 </span>
               )}
               <input className="input" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
@@ -431,33 +513,50 @@ export default function CheckoutView({
           <span className="label" style={{ marginBottom: 12, display: "block" }}>
             {t("when")}
           </span>
-          <div className="slot-wrap">
-            {fulfillment.asap.available && (
-              <button
-                className={`slot ${timing?.kind === "asap" ? "slot--on" : ""}`}
-                onClick={() => setTiming({ kind: "asap" })}
+          <div className="field">
+            <div style={{ position: "relative" }}>
+              <select
+                className="select"
+                style={{ appearance: "none", paddingInlineEnd: 34 }}
+                value={
+                  timing?.kind === "asap"
+                    ? "asap"
+                    : timing?.kind === "slot"
+                    ? `${timing.date}|${timing.start}|${timing.end}`
+                    : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) {
+                    setTiming(null);
+                  } else if (val === "asap") {
+                    setTiming({ kind: "asap" });
+                  } else {
+                    const [date, start, end] = val.split("|");
+                    setTiming({ kind: "slot", date, start, end });
+                  }
+                }}
               >
-                {t("asap")}
-              </button>
-            )}
-            {fulfillment.days.map((d) =>
-              d.slots.map((s) => {
-                const on = timing?.kind === "slot" && timing.date === d.date && timing.start === s.start;
-                return (
-                  <button
-                    key={`${d.date}-${s.start}`}
-                    className={`slot ${on ? "slot--on" : ""}`}
-                    onClick={() => setTiming({ kind: "slot", date: d.date, start: s.start, end: s.end })}
-                  >
-                    <span className="slot__day">{d.label}</span>
-                    <span dir="ltr">{s.label}</span>
-                  </button>
-                );
-              }),
-            )}
-            {!fulfillment.asap.available && fulfillment.days.length === 0 && (
-              <p className="muted">{locale === "ar" ? "لا توجد مواعيد متاحة" : "No slots available"}</p>
-            )}
+                <option value="">{locale === "ar" ? "اختر موعد التسليم" : "Select delivery time / schedule"}</option>
+                {fulfillment.asap.available && (
+                  <option value="asap">{t("asap")}</option>
+                )}
+                {fulfillment.days.map((d) => (
+                  <optgroup key={d.date} label={d.label}>
+                    {d.slots.map((s) => (
+                      <option key={`${d.date}-${s.start}`} value={`${d.date}|${s.start}|${s.end}`}>
+                        {d.label} - {s.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <IconChevronDown
+                width={16}
+                height={16}
+                style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }}
+              />
+            </div>
           </div>
           {fieldErrors.timing && <span className="field-error">{fieldErrors.timing}</span>}
         </div>
@@ -621,13 +720,15 @@ function SummaryRow({ label, value, accent }: { label: string; value: string; ac
 
 const checkoutCss = `
 @media(min-width:900px){.checkout-grid{grid-template-columns:1fr 360px}}
-.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius-xs);overflow:hidden}
-.seg__btn{padding:11px 26px;background:var(--surface);border:none;font-family:var(--font-sans);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink)}
-.seg__btn--on{background:var(--ink);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius-pill);overflow:hidden;padding:3px;background:var(--cream)}
+.seg__btn{padding:10px 24px;background:transparent;border:none;border-radius:var(--radius-pill);font-family:var(--font-sans);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;transition:all 0.2s}
+.seg__btn--on{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.12)}
 .addr-grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:520px){.addr-grid{grid-template-columns:1fr 1fr}}
 .slot-wrap{display:flex;flex-wrap:wrap;gap:10px}
-.slot{display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:12px 16px;border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius-xs);font-size:13px;color:var(--ink);min-height:44px}
-.slot--on{border-color:var(--ink);background:var(--ink);color:#fff}
+.slot{display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:12px 16px;border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius-md);font-size:13px;color:var(--ink);min-height:44px;cursor:pointer;transition:all 0.2s}
+.slot--on{border-color:var(--ink);background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.12)}
 .slot__day{font-family:var(--font-sans);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8}
+.opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);transition:all 0.2s;box-shadow:0 4px 14px rgba(0,0,0,0.02)}
+.opt-row:hover{border-color:var(--sand-deep)}
 `;
