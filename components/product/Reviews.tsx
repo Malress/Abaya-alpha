@@ -35,8 +35,8 @@ export default function Reviews({ reviews }: { reviews: Review[] }) {
             margin: 0,
             padding: 24,
             background: "var(--surface)",
-            border: "1px solid var(--line)",
-            borderRadius: "var(--radius-xs)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
           }}
         >
           {rev.rating != null && <Stars rating={rev.rating} />}

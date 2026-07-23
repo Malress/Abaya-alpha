@@ -162,7 +162,7 @@ export interface Category {
   no_mingling?: boolean;
   sort_order?: number;
   photo?: string | null;
-  sub_categories?: Category[];
+  sub_categories?: number[];
   products?: ProductShort[];
 }
 

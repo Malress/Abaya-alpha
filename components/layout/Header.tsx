@@ -10,6 +10,8 @@ import {
   IconMenu,
   IconSearch,
   IconUser,
+  IconTruck,
+  IconChevronDown,
 } from "@/components/ui/icons";
 
 export default function Header() {
@@ -20,9 +22,9 @@ export default function Header() {
     setLocale,
     tx,
     t,
-    setCartOpen,
     setSearchOpen,
     setMenuOpen,
+    branches,
   } = useStore();
   const { count } = useCart();
   const pathname = usePathname();
@@ -35,25 +37,77 @@ export default function Header() {
 
   return (
     <header className="header">
-      <div className="container">
-        <div className="header__bar">
+      <div className="header__bar" style={{ paddingInline: "clamp(16px, 3vw, 24px)" }}>
           <div className="header__left">
             <button
-              className="iconbtn"
-              aria-label={t("search")}
-              onClick={() => setSearchOpen(true)}
-            >
-              <IconSearch />
-            </button>
-            <button
-              className="iconbtn"
+              className="nav-action"
               style={{ display: "none" }}
               data-mobile-menu
-              aria-label={t("menu")}
               onClick={() => setMenuOpen(true)}
             >
               <IconMenu />
+              <span>{t("menu")}</span>
             </button>
+            
+            <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Link href="/shop" className="nav-action">
+                <span>{tx("Shop All", "تسوق الكل")}</span>
+              </Link>
+
+              <div className="nav-dropdown">
+                <button className="nav-action" style={{ cursor: "pointer" }}>
+                  <span>{tx("Categories", "الفئات")}</span>
+                  <IconChevronDown width={14} height={14} />
+                </button>
+                <div className="nav-dropdown-content">
+                  {topCats.map((c, i) => (
+                    <Link key={`${c.id}-${i}`} href={`/category/${categorySlug(c)}`} className="nav-dropdown-item">
+                      {tx(c.name, c.ar_name)}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="nav-dropdown">
+                <button className="nav-action" style={{ cursor: "pointer" }}>
+                  <span>{tx("Contact Us", "اتصل بنا")}</span>
+                  <IconChevronDown width={14} height={14} />
+                </button>
+                <div className="nav-dropdown-content">
+                  {branches?.[0] && (
+                    <div className="nav-dropdown-item" style={{ pointerEvents: "none", opacity: 0.6 }}>
+                      {tx(branches[0].name, branches[0].ar_name)}
+                      {branches[0].area ? `, ${branches[0].area}` : ""}
+                    </div>
+                  )}
+                  {config.contact_number && (
+                    <a href={`tel:${config.contact_number}`} className="nav-dropdown-item">
+                      {config.contact_number}
+                    </a>
+                  )}
+                  {config.email && (
+                    <a href={`mailto:${config.email}`} className="nav-dropdown-item">
+                      {config.email}
+                    </a>
+                  )}
+                  {config.instagram_link && (
+                    <a href={config.instagram_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
+                      Instagram
+                    </a>
+                  )}
+                  {config.whatsapp_link && (
+                    <a href={config.whatsapp_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
+                      WhatsApp
+                    </a>
+                  )}
+                  {config.tiktok_link && (
+                    <a href={config.tiktok_link} target="_blank" className="nav-dropdown-item" rel="noreferrer">
+                      TikTok
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <Link href="/" className="header__wordmark">
@@ -62,46 +116,48 @@ export default function Header() {
 
           <div className="header__right">
             <button
+              className="nav-action desktop-nav"
+              onClick={() => setSearchOpen(true)}
+            >
+              <IconSearch />
+              <span>{t("search")}</span>
+            </button>
+            <button
+              className="nav-action"
+              style={{ display: "none" }}
+              data-mobile-search
+              onClick={() => setSearchOpen(true)}
+            >
+              <IconSearch />
+            </button>
+            <button
               className="langbtn"
               onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
               aria-label="Toggle language"
             >
               {t("language")}
             </button>
-            <Link href="/account" className="iconbtn" aria-label={t("account")}>
-              <IconUser />
+            <Link href="/track" className="nav-action desktop-nav">
+              <IconTruck />
+              <span>{t("trackOrder")}</span>
             </Link>
-            <button
-              className="iconbtn"
-              aria-label={`${t("cart")} (${count})`}
-              onClick={() => setCartOpen(true)}
-            >
+            <Link href="/account" className="nav-action">
+              <IconUser />
+              <span className="desktop-nav">{t("account")}</span>
+            </Link>
+            <Link href="/cart" className="nav-action" style={{ position: "relative" }}>
               <IconBag />
-              {count > 0 && <span className="count">{count}</span>}
-            </button>
+              <span className="desktop-nav">{t("cart")}</span>
+              {count > 0 && <span className="count" style={{ position: "absolute", top: -2, right: 0, background: "var(--discount)", color: "#fff", borderRadius: 99, padding: "2px 6px", fontSize: 10, fontWeight: "bold" }}>{count}</span>}
+            </Link>
           </div>
         </div>
-      </div>
-
-      <nav className="nav container" aria-label="Primary">
-        <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>
-          {t("home")}
-        </Link>
-        {topCats.map((c) => {
-          const href = `/category/${categorySlug(c)}`;
-          return (
-            <Link
-              key={c.id}
-              href={href}
-              aria-current={pathname === href ? "page" : undefined}
-            >
-              {tx(c.name, c.ar_name)}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <style>{`@media (max-width: 899px){ [data-mobile-menu]{ display: grid !important; } }`}</style>
+      <style>{`
+        @media (max-width: 899px) { 
+          [data-mobile-menu], [data-mobile-search] { display: flex !important; } 
+          .desktop-nav { display: none !important; }
+        }
+      `}</style>
     </header>
   );
 }

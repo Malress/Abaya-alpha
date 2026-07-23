@@ -37,10 +37,9 @@ export default async function HomePage() {
   });
 
   const catsWithPhotos = topCats.filter(c => c.photo || c.products?.find(p => p.photo_medium || p.photo));
-  // stable "random" for SSR/CSR match: just take a slice of cats with photos, or use a pseudo-random seed based on branchId. 
-  // since it's SSR, random will mismatch on hydration if we don't be careful, but these are server components! 
-  // So Math.random() is fine, it only runs on server.
-  const slideCats = [...catsWithPhotos].sort(() => Math.random() - 0.5).slice(0, 2);
+  // stable "random" for SSR/CSR match: just take a slice of cats with photos
+  const numCats = Math.ceil(catsWithPhotos.length * 0.6);
+  const slideCats = [...catsWithPhotos].sort(() => Math.random() - 0.5).slice(0, numCats);
 
   for (const c of slideCats) {
     const images: string[] = [];
@@ -64,12 +63,40 @@ export default async function HomePage() {
     }
   }
 
+  for (const s of smart) {
+    const images: string[] = [];
+    if (s.photo) images.push(s.photo);
+    if (s.gallery) images.push(...s.gallery);
+    if (s.products) {
+      for (const p of s.products) {
+        if (p.photo_medium) images.push(p.photo_medium);
+        else if (p.photo) images.push(p.photo);
+      }
+    }
+    const uniqueImages = Array.from(new Set(images));
+    if (uniqueImages.length > 0) {
+      slides.push({
+        id: `smart-${s.key}`,
+        image: uniqueImages[0],
+        images: uniqueImages,
+        title: tx(s.name, s.ar_name) || "",
+        buttonText: `${tx("Shop", "تسوق")} ${tx(s.name, s.ar_name)}`,
+        href: `/category/smart-${s.key}`,
+      });
+    }
+  }
+
   // Home product rows: prefer smart categories, else top categories carrying products.
   type Row = { key: string; title: string; href?: string; products: ProductShort[] };
   const rows: Row[] = [];
   for (const s of smart) {
     if (s.products?.length) {
-      rows.push({ key: `smart-${s.key}`, title: tx(s.name, s.ar_name), products: s.products });
+      rows.push({ 
+        key: `smart-${s.key}`, 
+        title: tx(s.name, s.ar_name) || "", 
+        products: s.products, 
+        href: `/category/smart-${s.key}` 
+      });
     }
   }
   for (const c of topCats) {
@@ -96,12 +123,10 @@ export default async function HomePage() {
             <h2 className="section-title">{tx("Categories", "الفئات")}</h2>
           </div>
           <div className="cat-grid">
-            {topCats.slice(0, 6).map((c) => {
-              const photo =
-                c.photo ||
-                c.products?.find((p) => p.photo_medium || p.photo)?.photo_medium;
+            {topCats.slice(0, 6).map((c, i) => {
+              const photo = c.photo || c.products?.find((p) => p.photo_medium)?.photo_medium;
               return (
-                <Link key={c.id} href={`/category/${categorySlug(c)}`} className="cat-tile">
+                <Link key={`${c.id}-${i}`} href={`/category/${categorySlug(c)}`} className="cat-tile">
                   {photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={photo} alt={tx(c.name, c.ar_name)} loading="lazy" />

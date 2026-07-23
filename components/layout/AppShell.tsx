@@ -6,7 +6,6 @@ import { StoreProvider, useStore } from "@/components/providers/StoreProvider";
 import { CartProvider } from "@/components/providers/CartProvider";
 import Header from "./Header";
 import Footer from "./Footer";
-import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 import MobileMenu from "./MobileMenu";
 import BottomNav from "./BottomNav";
@@ -27,7 +26,6 @@ function Chrome({ children }: { children: React.ReactNode }) {
       <main className="page-pad-bottom">{children}</main>
       <Footer />
       <BottomNav />
-      <CartDrawer />
       <SearchOverlay />
       <MobileMenu />
       <PopupBanner />

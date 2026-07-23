@@ -14,7 +14,8 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
         style={{
           aspectRatio: "3 / 4",
           background: "var(--sand-soft)",
-          borderRadius: "var(--radius-xs)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
           display: "grid",
           placeItems: "center",
           color: "var(--muted)",
@@ -35,7 +36,8 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
           aspectRatio: "3 / 4",
           overflow: "hidden",
           background: "var(--sand-soft)",
-          borderRadius: "var(--radius-xs)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -60,7 +62,9 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
                 padding: 0,
                 border: i === active ? "1px solid var(--ink)" : "1px solid var(--line)",
                 background: "var(--sand-soft)",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-lg)",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                transition: "all 0.2s ease",
                 overflow: "hidden",
               }}
             >

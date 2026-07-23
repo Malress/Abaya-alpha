@@ -21,7 +21,7 @@ export default function CategoryView({
   priceRange,
   enableFilters,
 }: {
-  categoryId: number;
+  categoryId?: number;
   branchId: number;
   initialProducts: ProductShort[];
   initialHasNext: boolean;
@@ -47,22 +47,33 @@ export default function CategoryView({
       let list: ProductShort[] = [];
       let more = false;
       if (filtersActive) {
-        const res = await sfPost("/products/filter/", {
+        const payload: any = {
           branch_id: branchId,
-          channel: "web",
-          categories: [categoryId],
-          filter_options: selectedOptions,
-          price_range: priceRange ? [priceRange.min, priceRange.max] : undefined,
-          sort: sort || undefined,
           page: nextPage,
           limit: PAGE,
-        });
+          filter_options: selectedOptions,
+          channel: "web",
+        };
+        if (categoryId) payload.categories = [categoryId];
+        if (priceRange) payload.price_range = [priceRange.min, priceRange.max];
+        if (sort === "price-asc") payload.sort = "price-asc";
+        else if (sort === "price-desc") payload.sort = "price-desc";
+        else if (sort === "name-asc") payload.sort = "name-asc";
+        else if (sort === "name-desc") payload.sort = "name-desc";
+
+        const res = await sfPost("/products/filter/", payload);
         list = unwrapList<ProductShort>(res.raw);
         more = list.length >= PAGE;
       } else {
-        const res = await sfGet(
-          `/products/?branch_id=${branchId}&channel=web&category_id=${categoryId}&page=${nextPage}&limit=${PAGE}`,
-        );
+        const params = new URLSearchParams({
+          branch_id: String(branchId),
+          page: String(nextPage),
+          limit: String(PAGE),
+          channel: "web",
+        });
+        if (categoryId) params.set("category_id", String(categoryId));
+
+        const res = await sfGet(`/products/?${params.toString()}`);
         list = unwrapList<ProductShort>(res.raw);
         const raw = res.raw as { meta?: { has_next_page?: boolean }; has_next_page?: boolean };
         more = Boolean(raw?.meta?.has_next_page ?? raw?.has_next_page ?? list.length >= PAGE);

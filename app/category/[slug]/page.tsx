@@ -42,25 +42,48 @@ export default async function CategoryPage({
   const tx = (en?: string | null, ar?: string | null) => pick(locale, en, ar);
 
   const name = category ? tx(category.name, category.ar_name) : tx("Shop", "التسوق");
-  const subs: Category[] = (category?.sub_categories ?? []).filter(Boolean);
+  const subs: Category[] = (category?.sub_categories ?? [])
+    .map((subId) => boot.categories.find((c) => c.id === subId))
+    .filter((c): c is Category => Boolean(c))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-  // Parent category with subcategories and no direct products → show subcategory tiles.
-  if (subs.length > 0) {
-    return (
-      <div className="container">
-        <nav className="breadcrumb" aria-label="Breadcrumb">
-          <Link href="/">{tx("Home", "الرئيسية")}</Link>
-          <IconChevronRight width={13} height={13} className="dir-icon" />
-          <span>{name}</span>
-        </nav>
-        <div className="section-head">
-          <h1 className="section-title">{name}</h1>
-        </div>
-        <div className="cat-grid" style={{ paddingBottom: 60 }}>
-          {subs.map((c) => {
+  // Find parent if this is a child category
+  const parent = category?.is_child 
+    ? boot.categories.find(p => p.sub_categories?.includes(category.id)) 
+    : null;
+
+  const [firstPage, filters] = await Promise.all([
+    getProducts({ branchId: boot.branchId, categoryId: id, page: 1, limit: 12 }),
+    boot.config.enable_filter_and_sort
+      ? getFilters(boot.branchId, id)
+      : Promise.resolve({ filter_list: [] as never[] }),
+  ]);
+
+
+
+  return (
+    <div className="container">
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link href="/">{tx("Home", "الرئيسية")}</Link>
+        <IconChevronRight width={13} height={13} className="dir-icon" />
+        {parent && (
+          <>
+            <Link href={`/category/${categorySlug(parent)}`}>{tx(parent.name, parent.ar_name)}</Link>
+            <IconChevronRight width={13} height={13} className="dir-icon" />
+          </>
+        )}
+        <span>{name}</span>
+      </nav>
+      <div className="section-head">
+        <h1 className="section-title">{name}</h1>
+      </div>
+      
+      {subs.length > 0 && (
+        <div className="cat-grid" style={{ paddingBottom: 40 }}>
+          {subs.map((c, i) => {
             const photo = c.photo || c.products?.find((p) => p.photo_medium)?.photo_medium;
             return (
-              <Link key={c.id} href={`/category/${categorySlug(c)}`} className="cat-tile">
+              <Link key={`${c.id}-${i}`} href={`/category/${categorySlug(c)}`} className="cat-tile">
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={photo} alt={tx(c.name, c.ar_name)} loading="lazy" />
@@ -70,27 +93,9 @@ export default async function CategoryPage({
             );
           })}
         </div>
-      </div>
-    );
-  }
+      )}
 
-  const [firstPage, filters] = await Promise.all([
-    getProducts({ branchId: boot.branchId, categoryId: id, page: 1, limit: 12 }),
-    boot.config.enable_filter_and_sort
-      ? getFilters(boot.branchId, id)
-      : Promise.resolve({ filter_list: [] as never[] }),
-  ]);
 
-  return (
-    <div className="container">
-      <nav className="breadcrumb" aria-label="Breadcrumb">
-        <Link href="/">{tx("Home", "الرئيسية")}</Link>
-        <IconChevronRight width={13} height={13} className="dir-icon" />
-        <span>{name}</span>
-      </nav>
-      <div className="section-head">
-        <h1 className="section-title">{name}</h1>
-      </div>
       <CategoryView
         categoryId={id}
         branchId={boot.branchId}
