@@ -6,6 +6,7 @@ import {
 } from "@/lib/ordable/endpoints";
 import { getCountries } from "@/lib/ordable/endpoints";
 import CheckoutView from "@/components/checkout/CheckoutView";
+import Link from "next/link";
 import { pick } from "@/lib/i18n";
 
 export const metadata = { title: "Checkout" };
@@ -27,10 +28,15 @@ export default async function CheckoutPage() {
   );
 
   return (
-    <div className="container container-narrow section-tight">
-      <h1 className="section-title" style={{ marginBottom: 32 }}>
-        {pick(locale, "Checkout", "الدفع")}
-      </h1>
+    <div className="container section-tight">
+      <div className="spread" style={{ marginBottom: 32 }}>
+        <h1 className="section-title" style={{ margin: 0 }}>
+          {pick(locale, "Checkout", "الدفع")}
+        </h1>
+        <Link href="/cart" className="btn btn-sm btn-outline">
+          {pick(locale, "Back to Cart", "العودة للسلة")}
+        </Link>
+      </div>
       <CheckoutView
         branches={boot.branches}
         areas={areas}

@@ -55,7 +55,7 @@ export default function ReviewForm({ productId }: { productId: number }) {
             aria-label={`${i + 1}`}
             style={{ background: "none", border: "none", padding: 2, color: "var(--sand-deep)" }}
           >
-            <IconStar width={22} height={22} style={{ opacity: i < rating ? 1 : 0.25 }} />
+            <IconStar width={22} height={22} style={{ opacity: i < rating ? 1 : 0.25, color: "#FFD700" }} />
           </button>
         ))}
       </div>

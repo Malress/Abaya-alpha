@@ -55,7 +55,7 @@ export default function ProductCard({ product }: { product: ProductShort }) {
   
   const swatchImages: { url: string; label: string }[] = [];
   if (product.has_variants && variants.length > 0) {
-    const colorKey = variantKeys.find((k) => 
+    const colorKey = variantKeys.find((k: any) => 
       /colou?rs?|لون|style/i.test(k.variant_key + (k.variant_key_ar ?? ""))
     );
     if (colorKey) {

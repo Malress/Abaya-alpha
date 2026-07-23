@@ -115,6 +115,9 @@ export interface Branch {
   enable_scheduled_pickup?: boolean;
   on_demand_delivery_minutes?: number;
   on_demand_pickup_minutes?: number;
+  enable_on_demand_custom_string?: boolean;
+  on_demand_custom_string?: string;
+  on_demand_custom_string_ar?: string;
   minimum_lead_time?: number;
   pickup_interval?: number;
   enable_same_day_delivery?: boolean;

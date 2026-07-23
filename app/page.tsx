@@ -7,6 +7,7 @@ import { productSlug } from "@/lib/slug";
 import ProductCard from "@/components/product/ProductCard";
 import Reviews from "@/components/product/Reviews";
 import HeroCarousel, { type HeroSlide } from "@/components/layout/HeroCarousel";
+import FeaturedSwitcher from "@/components/layout/FeaturedSwitcher";
 import type { ProductShort } from "@/lib/ordable/types";
 import { formatMoney, productImage, displayPrice } from "@/lib/format";
 
@@ -129,9 +130,9 @@ export default async function HomePage() {
   // Seed changes every 12 h → new featured picks a few times a day
   const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 12));
 
-  // Pick 2 featured products from across the first 2 rows (with images)
+  // Pick featured products from across the first 2 rows (with images)
   const topRowsProducts = rows.slice(0, 2).flatMap(r => r.products).filter(p => p.photo_medium || p.photo);
-  const globalFeatured = seededShuffle(topRowsProducts, seed).slice(0, 2);
+  const globalFeatured = seededShuffle(topRowsProducts, seed);
   const globalFeaturedIds = new Set(globalFeatured.map(p => p.id));
 
   return (
@@ -163,36 +164,12 @@ export default async function HomePage() {
 
       {/* Featured duo — edge-to-edge */}
       {globalFeatured.length > 0 && (
-        <div className={`featured-duo${globalFeatured.length === 1 ? " featured-duo--single" : ""}`}>
-          {globalFeatured.map((p) => {
-            const img = productImage(p, "medium") || productImage(p, "small");
-            const name = tx(p.name, p.ar_name);
-            const catName = tx(p.category_name, p.category_ar_name);
-            const { price } = displayPrice(p);
-            const href = `/product/${categorySlug({ id: p.category_id ?? 0, name: p.category_name ?? "", slug: null })}/${productSlug(p)}`;
-            return (
-              <Link key={p.id} href={href} className="featured-panel">
-                {img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img} alt={name} className="featured-panel__img" loading="lazy" />
-                ) : (
-                  <div className="featured-panel__img" style={{ background: "var(--sand-soft)" }} />
-                )}
-                <div className="featured-panel__overlay" />
-                <div className="featured-panel__info">
-                  {catName && <span className="featured-panel__cat">{catName}</span>}
-                  <p className="featured-panel__name">{name}</p>
-                  <span className="featured-panel__price">
-                    {formatMoney(price, config.base_currency, locale)}
-                  </span>
-                  <span className="featured-panel__btn">
-                    {tx("View Product", "عرض المنتج")}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <FeaturedSwitcher 
+          products={globalFeatured} 
+          locale={locale} 
+          baseCurrency={config.base_currency} 
+          btnText={tx("View Product", "عرض المنتج") ?? "View Product"}
+        />
       )}
 
       {rows.map((row) => {

@@ -50,6 +50,8 @@ export function computeFulfillment(
   isDelivery: boolean,
   locale: "en" | "ar",
   daysAhead = 7,
+  areaMins?: number | null,
+  preparationTime?: number | null,
 ): FulfillmentOptions {
   const now = new Date();
   const leadMin = branch.minimum_lead_time ?? 0;
@@ -73,7 +75,33 @@ export function computeFulfillment(
     asap.date = dateStr(now);
     asap.start = start;
     asap.end = end;
-    asap.label = locale === "ar" ? "في أقرب وقت" : "As soon as possible";
+    
+    // Compute display string similar to Retail getCompactAsapDisplayString
+    if (branch.enable_on_demand_custom_string) {
+      asap.label = locale === "ar" && branch.on_demand_custom_string_ar 
+        ? branch.on_demand_custom_string_ar 
+        : branch.on_demand_custom_string || (locale === "ar" ? "في أقرب وقت" : "As soon as possible");
+    } else {
+      const mins = areaMins || onDemandMin || preparationTime;
+      if (mins && mins > 0) {
+        if (mins >= 1440) {
+          const days = Math.round(mins / 1440);
+          if (days === 1) asap.label = locale === "ar" ? "يوم واحد" : "1 Day";
+          else if (days === 2) asap.label = locale === "ar" ? "يومين" : "2 Days";
+          else asap.label = locale === "ar" ? `${days} أيام` : `${days} Days`;
+        } else if (mins >= 60) {
+          const hours = Math.round(mins / 60);
+          if (hours === 1) asap.label = locale === "ar" ? "ساعة واحدة" : "1 Hour";
+          else if (hours === 2) asap.label = locale === "ar" ? "ساعتين" : "2 Hours";
+          else asap.label = locale === "ar" ? `${hours} ساعات` : `${hours} Hours`;
+        } else {
+          asap.label = locale === "ar" ? `${mins} دقيقة` : `${mins} Mins`;
+        }
+      } else {
+        // Fallback
+        asap.label = areaMins !== undefined && areaMins !== null ? (locale === "ar" ? "قيد المراجعة" : "Pending") : (locale === "ar" ? "في أقرب وقت" : "As soon as possible");
+      }
+    }
   }
 
   // Scheduled

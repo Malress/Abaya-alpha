@@ -72,7 +72,7 @@ export default async function RootLayout({
     overrides.push(`--discount:${boot.config.discount_tag_color};`);
   }
   if (boot && isRealColor(boot.config.theme_color)) {
-    overrides.push(`--accent:${boot.config.theme_color};`);
+    overrides.push(`--brand:${boot.config.theme_color};`);
   }
   const themeStyle = overrides.length ? `:root{${overrides.join("")}}` : "";
 

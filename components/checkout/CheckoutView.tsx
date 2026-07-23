@@ -52,7 +52,7 @@ export default function CheckoutView({
   const [wallet, setWallet] = useState(0);
 
   const [areaId, setAreaId] = useState<number | null>(null);
-  
+
   const activeBranch = useMemo(() => {
     if (areaId) {
       const area = areas.find(a => a.id === areaId);
@@ -67,9 +67,18 @@ export default function CheckoutView({
   const canPickup = activeBranch?.enable_pickup ?? false;
   const [isDelivery, setIsDelivery] = useState(true);
 
-  const [addr, setAddr] = useState({
-    block: "", street: "", building: "", floor: "", apartment: "", additional: "",
-  });
+  // Address fields
+  const [block, setBlock] = useState("");
+  const [street, setStreet] = useState("");
+  const [building, setBuilding] = useState("");
+  const [floor, setFloor] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [additional, setAdditional] = useState("");
+  const [paci, setPaci] = useState("");
+  const [nationalAddressCode, setNationalAddressCode] = useState("");
+  const [zone, setZone] = useState("");
+  const [avenue, setAvenue] = useState("");
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -85,8 +94,14 @@ export default function CheckoutView({
   const [useWallet, setUseWallet] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
 
+  // Gift fields
   const [isGift, setIsGift] = useState(false);
-  const [gift, setGift] = useState({ name: "", number: "", message: "" });
+  const [giftName, setGiftName] = useState("");
+  const [giftNumber, setGiftNumber] = useState("");
+  const [giftMessage, setGiftMessage] = useState("");
+  const [giftLink, setGiftLink] = useState("");
+  const [sendGiftAnonymously, setSendGiftAnonymously] = useState(false);
+  const [unknownGiftLocation, setUnknownGiftLocation] = useState(false);
 
   const [agreed, setAgreed] = useState<Record<string, boolean>>({});
   const [dry, setDry] = useState<{ delivery: number; discount: number; vat: number } | null>(null);
@@ -126,7 +141,39 @@ export default function CheckoutView({
     );
   }, [countries, selectedCountry]);
 
-  const dialCode = selectedCountryObj?.dial_code || countries[0]?.dial_code;
+  const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<string>(
+    () => countries[0]?.name || "Kuwait"
+  );
+
+  const phoneCountryObj = useMemo(() => {
+    return (
+      countries.find((c) => c.name === selectedPhoneCountry || c.ar_name === selectedPhoneCountry) ||
+      countries[0]
+    );
+  }, [countries, selectedPhoneCountry]);
+
+  const dialCode = phoneCountryObj?.dial_code || countries[0]?.dial_code;
+
+  const [selectedGiftPhoneCountry, setSelectedGiftPhoneCountry] = useState<string>(
+    () => countries[0]?.name || "Kuwait"
+  );
+
+  const giftPhoneCountryObj = useMemo(() => {
+    return (
+      countries.find((c) => c.name === selectedGiftPhoneCountry || c.ar_name === selectedGiftPhoneCountry) ||
+      countries[0]
+    );
+  }, [countries, selectedGiftPhoneCountry]);
+
+  const giftDialCode = giftPhoneCountryObj?.dial_code || countries[0]?.dial_code;
+
+  const cName = selectedCountryObj?.name || "";
+  const isKuwait = cName === "Kuwait";
+  const isKSA = cName === "Saudi Arabia";
+  const isQatar = cName === "Qatar";
+  const isUAE = cName === "United Arab Emirates" || cName === "UAE";
+  const isBahrain = cName === "Bahrain";
+  const isOman = cName === "Oman";
 
   const filteredAreas = useMemo(() => {
     if (activeCountries.length <= 1) return areas;
@@ -166,10 +213,11 @@ export default function CheckoutView({
     });
   }, [config.enable_wallet, config.enable_wallet_staff]);
 
-  const fulfillment = useMemo(
-    () => (activeBranch ? computeFulfillment(activeBranch, isDelivery, locale) : { asap: { available: false }, days: [] }),
-    [activeBranch, isDelivery, locale],
-  );
+  const fulfillment = useMemo(() => {
+    if (!activeBranch) return { asap: { available: false }, days: [] };
+    const area = areas.find((a) => a.id === areaId);
+    return computeFulfillment(activeBranch, isDelivery, locale, 14, area?.delivery_minutes);
+  }, [activeBranch, isDelivery, locale, areaId, areas]);
 
   // Preselect single payment method.
   const availablePayments = useMemo(() => {
@@ -185,6 +233,18 @@ export default function CheckoutView({
     if (availablePayments.length === 1) setPayment(availablePayments[0].value);
     else if (payment && !availablePayments.some((p) => p.value === payment)) setPayment("");
   }, [availablePayments, payment]);
+
+  useEffect(() => {
+    if (!timing) {
+      if (fulfillment.asap.available) {
+        setTiming({ kind: "asap" });
+      } else if (fulfillment.days.length > 0 && fulfillment.days[0].slots.length > 0) {
+        const firstDay = fulfillment.days[0];
+        const firstSlot = firstDay.slots[0];
+        setTiming({ kind: "slot", date: firstDay.date, start: firstSlot.start, end: firstSlot.end });
+      }
+    }
+  }, [fulfillment, timing]);
 
   const selectedArea = areas.find((a) => a.id === areaId);
   const deliveryRate = isDelivery ? dry?.delivery ?? selectedArea?.delivery_rate ?? 0 : 0;
@@ -217,9 +277,26 @@ export default function CheckoutView({
         fulfillment_date: timing?.kind === "slot" ? timing.date : fulfillment.asap.date,
         fulfillment_slot_start: timing?.kind === "slot" ? timing.start : fulfillment.asap.start,
         fulfillment_slot_end: timing?.kind === "slot" ? timing.end : fulfillment.asap.end,
-        customer: { name, phone: dialCode && phone && !phone.startsWith("+") ? phone : phone, email },
+        customer: { name, phone: dialCode && phone && !phone.startsWith("+") ? dialCode + phone : phone, email },
         delivery_address: isDelivery
-          ? { area_id: areaId, ...addr }
+          ? {
+              area_id: areaId,
+              block: isQatar ? (zone || "-") : (isUAE ? "-" : (block || "-")),
+              street: street || "-",
+              building: building || "-",
+              floor: floor,
+              apartment: apartment,
+              additional: additional,
+              ...(isKuwait && paci ? { paci } : {}),
+              ...(isKSA && nationalAddressCode
+                ? {
+                    paci: nationalAddressCode,
+                    national_address_code: nationalAddressCode,
+                  }
+                : {}),
+              ...(isQatar && zone ? { zone } : {}),
+              ...((isKuwait || isBahrain || isOman) && avenue ? { avenue } : {})
+            }
           : undefined,
         items: toOrderItems(lines),
         payment_method: payment || undefined,
@@ -231,14 +308,19 @@ export default function CheckoutView({
         smartPromotionsDiscounts: Object.keys(smartMap).length ? smartMap : undefined,
         use_customer_wallet: me && useWallet ? 1 : undefined,
         use_customer_points: me && usePoints ? 1 : undefined,
-        is_gift: isGift || undefined,
-        gift_recipient_name: isGift ? gift.name || undefined : undefined,
-        gift_recipient_number: isGift ? gift.number || undefined : undefined,
-        gift_message: isGift ? gift.message || undefined : undefined,
+        ...(isGift && config.enable_gifts ? {
+          is_gift: true,
+          gift_recipient_name: giftName || undefined,
+          gift_recipient_number: giftNumber ? `${giftDialCode}${giftNumber}` : undefined,
+          ...(config.enable_gifts_message_form && giftMessage ? { gift_message: giftMessage } : {}),
+          ...(config.enable_gift_links && giftLink ? { gift_link: giftLink } : {}),
+          ...(config.enable_send_gift_anonymously ? { send_gift_anonymously: sendGiftAnonymously } : {}),
+          ...(config.enable_unknown_gift_recipient_location ? { unknown_gift_recipient_location: unknownGiftLocation } : {})
+        } : {}),
         dry_run: dryRun,
       };
     },
-    [activeBranch, isDelivery, timing, fulfillment, name, phone, email, dialCode, areaId, addr, lines, payment, locale, appliedCoupon, promotions, me, useWallet, usePoints, isGift, gift],
+    [activeBranch, isDelivery, timing, fulfillment, name, phone, email, dialCode, areaId, block, street, building, floor, apartment, additional, paci, nationalAddressCode, zone, avenue, isKuwait, isKSA, isQatar, isUAE, isBahrain, isOman, lines, payment, locale, appliedCoupon, promotions, me, useWallet, usePoints, isGift, config, giftName, giftNumber, giftMessage, giftLink, sendGiftAnonymously, unknownGiftLocation],
   );
 
   // Dry-run validation whenever the money-affecting inputs change.
@@ -285,9 +367,20 @@ export default function CheckoutView({
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = t("required");
     if (!phone.trim()) errs.phone = t("required");
-    if (isDelivery && !areaId) errs.area = t("required");
-    if (isDelivery && !addr.block.trim()) errs.block = t("required");
-    if (isDelivery && !addr.street.trim()) errs.street = t("required");
+    if (isDelivery) {
+      if (!areaId) errs.area = t("required");
+      if (isQatar) {
+        if (!zone.trim()) errs.zone = t("required");
+        if (!street.trim()) errs.street = t("required");
+      } else if (isKSA) {
+        if (!nationalAddressCode.trim()) errs.nationalAddressCode = t("required");
+        if (!block.trim()) errs.block = t("required");
+        if (!street.trim()) errs.street = t("required");
+      } else {
+        if (!isUAE && !block.trim()) errs.block = t("required");
+        if (!street.trim()) errs.street = t("required");
+      }
+    }
     if (!timing) errs.timing = t("required");
     if (!payment) errs.payment = t("required");
     for (const a of agreements) {
@@ -311,7 +404,6 @@ export default function CheckoutView({
       return;
     }
     const data = (res.raw as { data?: { tracking_id?: string; payment_link?: string } })?.data ?? {};
-    // Persist a thin order record so the tracker has details before the first live fetch.
     try {
       if (data.tracking_id) {
         localStorage.setItem(
@@ -346,18 +438,19 @@ export default function CheckoutView({
     border: "1px solid var(--line)",
     borderRadius: "var(--radius-lg)",
     padding: "24px",
-    marginBottom: 20,
     boxShadow: "0 10px 30px rgba(0, 0, 0, 0.03)",
   };
 
+  const hideAddress = isGift && unknownGiftLocation;
+
   return (
     <div className="checkout-grid" style={{ display: "grid", gap: 28, alignItems: "start" }}>
-      <div>
+      <div className="stack" style={{ gap: 28 }}>
         {/* Sign in */}
         {!me && (
-          <div style={sectionStyle}>
+          <div className="checkout-sections-container">
             <div className="spread">
-              <span className="drawer__title">{t("signInToCheckout")}</span>
+              <span className="section-title" style={{ margin: 0 }}>{t("signInToCheckout")}</span>
               <button className="btn btn-sm btn-outline" onClick={() => setShowAuth((v) => !v)}>
                 {t("signIn")}
               </button>
@@ -383,19 +476,114 @@ export default function CheckoutView({
           </div>
         )}
         {me && (
-          <div style={sectionStyle}>
+          <div className="checkout-sections-container">
             <span className="muted">
               {locale === "ar" ? "مرحباً" : "Signed in as"} <strong>{me.name || me.email}</strong>
             </span>
           </div>
         )}
 
+        {/* Gift */}
+        {config.enable_gifts && (
+          <div className="checkout-sections-container">
+            <label className="row" style={{ gap: 10, cursor: "pointer", paddingBottom: isGift ? 16 : 0, borderBottom: isGift ? "1px solid var(--line)" : "none" }}>
+              <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
+              <span className="section-title" style={{ margin: 0 }}>{t("giftOrder")}</span>
+            </label>
+            {isGift && (
+              <div className="stack" style={{ gap: 14, paddingTop: 16 }}>
+                <div className="addr-grid">
+                  <Field label={t("giftRecipientName")} value={giftName} onChange={setGiftName} req={config.enable_force_gift_name_number} />
+                  <div className="field">
+                    <label>{t("giftRecipientNumber")}{config.enable_force_gift_name_number && <span className="req">*</span>}</label>
+                    <div className="row" style={{ gap: 8 }}>
+                    <select
+                      dir="ltr"
+                      className="select"
+                      value={selectedGiftPhoneCountry}
+                      onChange={(e) => setSelectedGiftPhoneCountry(e.target.value)}
+                      style={{ width: "auto", minWidth: 90, fontWeight: 700, paddingInlineEnd: 8 }}
+                    >
+                      {countries.map((c) => (
+                        <option key={c.name} value={c.name}>{c.alpha_2_code || c.name} {c.dial_code}</option>
+                      ))}
+                    </select>
+                    <input className="input" dir="ltr" value={giftNumber} onChange={(e) => setGiftNumber(e.target.value)} inputMode="tel" />
+                  </div>
+                  </div>
+                </div>
+                {config.enable_gifts_message_form && (
+                  <div className="field">
+                    <label>{t("giftMessage")}</label>
+                    <textarea
+                      className="textarea"
+                      maxLength={config.gift_message_character_limit || undefined}
+                      value={giftMessage}
+                      onChange={(e) => setGiftMessage(e.target.value)}
+                    />
+                  </div>
+                )}
+                {config.enable_gift_links && (
+                  <Field label={tx("Gift Link", "رابط الهدية")} value={giftLink} onChange={setGiftLink} />
+                )}
+                {config.enable_send_gift_anonymously && (
+                  <label className="row" style={{ gap: 10, cursor: "pointer", marginTop: 8 }}>
+                    <input type="checkbox" checked={sendGiftAnonymously} onChange={(e) => setSendGiftAnonymously(e.target.checked)} />
+                    <span>{tx("Send Gift Anonymously", "إرسال الهدية بشكل مجهول")}</span>
+                  </label>
+                )}
+                {config.enable_unknown_gift_recipient_location && (
+                  <label className="row" style={{ gap: 10, cursor: "pointer" }}>
+                    <input type="checkbox" checked={unknownGiftLocation} onChange={(e) => setUnknownGiftLocation(e.target.checked)} />
+                    <span>{tx("I don't know the recipient's address", "لا أعرف عنوان المستلم")}</span>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="checkout-sections-container">
+          {/* Contact Details */}
+          <div className="checkout-section" style={{ paddingTop: 0 }}>
+          <span className="section-title">
+            {isGift ? tx("Sender's Details", "بيانات المرسل") : t("contactDetails")}
+          </span>
+          <div className="addr-grid">
+            <div className="field">
+              <label>{t("fullName")}<span className="req">*</span></label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+              {fieldErrors.name && <span className="field-error">{fieldErrors.name}</span>}
+            </div>
+            <div className="field">
+              <label>{t("phone")}<span className="req">*</span></label>
+              <div className="row" style={{ gap: 8 }}>
+                <select
+                  dir="ltr"
+                  className="select"
+                  value={selectedPhoneCountry}
+                  onChange={(e) => setSelectedPhoneCountry(e.target.value)}
+                  style={{ width: "auto", minWidth: 90, fontWeight: 700, paddingInlineEnd: 8 }}
+                >
+                  {countries.map((c) => (
+                    <option key={c.name} value={c.name}>{c.alpha_2_code || c.name} {c.dial_code}</option>
+                  ))}
+                </select>
+                <input className="input" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+              </div>
+              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+            </div>
+          </div>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>{t("email")}</label>
+            <input className="input" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" />
+          </div>
+        </div>
+
         {/* Fulfillment mode */}
-        {(canDelivery || canPickup) && (
-          <div style={sectionStyle}>
-            <span className="label" style={{ marginBottom: 12, display: "block" }}>
-              {t("deliveryMethod")}
-            </span>
+        {!hideAddress && (canDelivery || canPickup) && (
+          <div className="checkout-section">
+            <span className="section-title">{t("deliveryMethod")}</span>
             <div className="seg">
               {canDelivery && (
                 <button
@@ -417,41 +605,34 @@ export default function CheckoutView({
           </div>
         )}
 
-        {/* Area + address */}
-        {isDelivery && (
-          <div style={sectionStyle}>
-            <span className="label" style={{ marginBottom: 12, display: "block" }}>
-              {t("address")}
-            </span>
+        {/* Address / Branch */}
+        {!hideAddress && isDelivery && (
+          <div className="checkout-section">
+            <span className="section-title">{t("address")}</span>
+            
             {activeCountries.length > 1 && (
               <div className="field" style={{ marginBottom: 14 }}>
-                <label>{tx("Country", "الدولة")}</label>
-                <div style={{ position: "relative" }}>
-                  <select
-                    className="select"
-                    style={{ appearance: "none", paddingInlineEnd: 34 }}
-                    value={selectedCountry}
-                    onChange={(e) => {
-                      setSelectedCountry(e.target.value);
-                      setAreaId(null);
-                    }}
-                  >
-                    {activeCountries.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {tx(c.name, c.ar_name)}
-                      </option>
-                    ))}
-                  </select>
-                  <IconChevronDown
-                    width={16}
-                    height={16}
-                    style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }}
-                  />
+                <label>{tx("Country", "الدولة")}<span className="req">*</span></label>
+                <div className="country-chips">
+                  {activeCountries.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`country-chip ${selectedCountry === c.id ? "country-chip--on" : ""}`}
+                      onClick={() => {
+                        setSelectedCountry(c.id);
+                        setAreaId(null);
+                      }}
+                    >
+                      {tx(c.name, c.ar_name)}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
+            
             <div className="field" style={{ marginBottom: 14 }}>
-              <label>{t("area")}</label>
+              <label>{t("area")}<span className="req">*</span></label>
               <div style={{ position: "relative" }}>
                 <select
                   className="select"
@@ -474,17 +655,50 @@ export default function CheckoutView({
               </div>
               {fieldErrors.area && <span className="field-error">{fieldErrors.area}</span>}
             </div>
-            <div className="addr-grid">
-              <Field label={t("block")} value={addr.block} onChange={(v) => setAddr({ ...addr, block: v })} err={fieldErrors.block} />
-              <Field label={t("street")} value={addr.street} onChange={(v) => setAddr({ ...addr, street: v })} err={fieldErrors.street} />
-              <Field label={t("building")} value={addr.building} onChange={(v) => setAddr({ ...addr, building: v })} />
-              <Field label={t("floor")} value={addr.floor} onChange={(v) => setAddr({ ...addr, floor: v })} />
-              <Field label={t("apartment")} value={addr.apartment} onChange={(v) => setAddr({ ...addr, apartment: v })} />
+
+            {/* Regional Address Grid */}
+            {isKSA ? (
+              <div className="addr-grid">
+                <Field label={tx("National Address Code", "الرمز البريدي")} value={nationalAddressCode} onChange={setNationalAddressCode} err={fieldErrors.nationalAddressCode} req />
+                <Field label={t("block")} value={block} onChange={setBlock} err={fieldErrors.block} req />
+              </div>
+            ) : (
+              <div className="addr-grid">
+                {isQatar ? (
+                  <Field label={tx("Zone", "المنطقة")} value={zone} onChange={setZone} err={fieldErrors.zone} req />
+                ) : !isUAE ? (
+                  <Field label={t("block")} value={block} onChange={setBlock} err={fieldErrors.block} req />
+                ) : null}
+                <Field label={t("street")} value={street} onChange={setStreet} err={fieldErrors.street} req />
+              </div>
+            )}
+            
+            {isKSA && (
+              <div style={{ marginTop: 14 }}>
+                <Field label={t("street")} value={street} onChange={setStreet} err={fieldErrors.street} req />
+              </div>
+            )}
+
+            {!isKSA && (isKuwait || isBahrain || isOman) && (
+              <div className="addr-grid" style={{ marginTop: 14 }}>
+                <Field label={tx("Avenue (Optional)", "جادة (اختياري)")} value={avenue} onChange={setAvenue} />
+                {isKuwait && (
+                  <Field label={tx("PACI", "الرقم الآلي")} value={paci} onChange={setPaci} />
+                )}
+              </div>
+            )}
+
+            <div className="addr-grid" style={{ marginTop: 14 }}>
+              <Field label={t("building")} value={building} onChange={setBuilding} />
+              <Field label={t("floor")} value={floor} onChange={setFloor} />
+              <Field label={t("apartment")} value={apartment} onChange={setApartment} />
             </div>
+
             <div className="field" style={{ marginTop: 14 }}>
               <label>{t("additionalDirections")}</label>
-              <input className="input" value={addr.additional} onChange={(e) => setAddr({ ...addr, additional: e.target.value })} />
+              <input className="input" value={additional} onChange={(e) => setAdditional(e.target.value)} />
             </div>
+
             {belowAreaMin && (
               <p className="notice notice-error" style={{ marginTop: 12 }}>
                 {t("minimumOrder")}: {formatMoney(areaMin, currency, locale)}
@@ -493,140 +707,33 @@ export default function CheckoutView({
           </div>
         )}
 
-        {/* Contact */}
-        <div style={sectionStyle}>
-          <span className="label" style={{ marginBottom: 12, display: "block" }}>
-            {t("contactDetails")}
-          </span>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("fullName")}</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-            {fieldErrors.name && <span className="field-error">{fieldErrors.name}</span>}
-          </div>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("phone")}</label>
-            <div className="row" style={{ gap: 8 }}>
-              {dialCode && (
-                <span className="pill" dir="ltr" style={{ whiteSpace: "nowrap" }}>
-                  {selectedCountryObj?.flag ? `${selectedCountryObj.flag} ` : ""}{dialCode}
-                </span>
-              )}
-              <input className="input" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
-            </div>
-            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
-          </div>
-          <div className="field">
-            <label>{t("email")}</label>
-            <input className="input" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" />
-          </div>
-        </div>
-
-        {/* When */}
-        <div style={sectionStyle}>
-          <span className="label" style={{ marginBottom: 12, display: "block" }}>
-            {t("when")}
-          </span>
-          <div className="field">
-            <div style={{ position: "relative" }}>
-              <select
-                className="select"
-                style={{ appearance: "none", paddingInlineEnd: 34 }}
-                value={
-                  timing?.kind === "asap"
-                    ? "asap"
-                    : timing?.kind === "slot"
-                    ? `${timing.date}|${timing.start}|${timing.end}`
-                    : ""
-                }
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) {
-                    setTiming(null);
-                  } else if (val === "asap") {
-                    setTiming({ kind: "asap" });
-                  } else {
-                    const [date, start, end] = val.split("|");
-                    setTiming({ kind: "slot", date, start, end });
-                  }
-                }}
-              >
-                <option value="">{locale === "ar" ? "اختر موعد التسليم" : "Select delivery time / schedule"}</option>
-                {fulfillment.asap.available && (
-                  <option value="asap">{t("asap")}</option>
-                )}
-                {fulfillment.days.map((d) => (
-                  <optgroup key={d.date} label={d.label}>
-                    {d.slots.map((s) => (
-                      <option key={`${d.date}-${s.start}`} value={`${d.date}|${s.start}|${s.end}`}>
-                        {d.label} - {s.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <IconChevronDown
-                width={16}
-                height={16}
-                style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }}
-              />
-            </div>
-          </div>
-          {fieldErrors.timing && <span className="field-error">{fieldErrors.timing}</span>}
-        </div>
-
-        {/* Gift */}
-        {config.enable_gifts && (
-          <div style={sectionStyle}>
-            <label className="row" style={{ gap: 10, cursor: "pointer" }}>
-              <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
-              <span className="drawer__title">{t("giftOrder")}</span>
-            </label>
-            {isGift && (
-              <div className="stack" style={{ gap: 14, marginTop: 16 }}>
-                <Field label={t("giftRecipientName")} value={gift.name} onChange={(v) => setGift({ ...gift, name: v })} />
-                <Field label={t("giftRecipientNumber")} value={gift.number} onChange={(v) => setGift({ ...gift, number: v })} />
-                {config.enable_gifts_message_form && (
-                  <div className="field">
-                    <label>{t("giftMessage")}</label>
-                    <textarea
-                      className="textarea"
-                      maxLength={config.gift_message_character_limit || undefined}
-                      value={gift.message}
-                      onChange={(e) => setGift({ ...gift, message: e.target.value })}
-                    />
-                  </div>
-                )}
+        {/* Pickup Form */}
+        {!hideAddress && !isDelivery && canPickup && (
+          <div className="checkout-section">
+            <span className="section-title">{t("pickupStore")}</span>
+            {activeBranch ? (
+              <div className="field">
+                <div style={{ padding: 12, background: "var(--bg)", borderRadius: "var(--radius)", border: "1px solid var(--line)" }}>
+                  <div style={{ fontWeight: "bold" }}>{tx(activeBranch.name, activeBranch.ar_name)}</div>
+                  {(activeBranch as any).address && <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{(activeBranch as any).address}</div>}
+                </div>
               </div>
+            ) : (
+              <div className="field-error">{t("noPickup")}</div>
             )}
+            
+            <div className="field" style={{ marginTop: 14 }}>
+              <label>{t("vehicleDetails")}</label>
+              <input className="input" placeholder={locale === "ar" ? "نوع السيارة، لونها، أو رقم اللوحة (اختياري)" : "Car type, color, or plate number (optional)"} value={additional} onChange={(e) => setAdditional(e.target.value)} />
+            </div>
           </div>
         )}
 
-        {/* Payment */}
-        {availablePayments.length > 0 && (
-          <div style={sectionStyle}>
-            <span className="label" style={{ marginBottom: 12, display: "block" }}>
-              {t("paymentMethod")}
-            </span>
-            <div className="stack" style={{ gap: 10 }}>
-              {availablePayments.map((p) => (
-                <label key={p.value} className="opt-row" style={{ cursor: "pointer" }}>
-                  <span>{tx(p.label, p.ar_label)}</span>
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={payment === p.value}
-                    onChange={() => setPayment(p.value)}
-                  />
-                </label>
-              ))}
-            </div>
-            {fieldErrors.payment && <span className="field-error">{fieldErrors.payment}</span>}
-          </div>
-        )}
+      </div>
       </div>
 
       {/* Summary */}
-      <aside className="checkout-summary" style={{ ...sectionStyle, position: "sticky", top: 90 }}>
+      <aside className="checkout-summary" style={{ ...sectionStyle, position: "sticky", top: 130 }}>
         <h3 style={{ fontSize: 22, marginBottom: 16 }}>{t("orderSummary")}</h3>
         <div className="stack" style={{ gap: 8, maxHeight: 220, overflowY: "auto", marginBottom: 14 }}>
           {lines.map((l) => (
@@ -638,7 +745,146 @@ export default function CheckoutView({
           ))}
         </div>
 
-        {/* Coupon */}
+        {/* When – in summary */}
+        <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}>
+          <div className="spread">
+            <div className="stack" style={{ gap: 2 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.55 }}>{t("when")}</span>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>
+                {timing?.kind === "asap"
+                  ? (fulfillment.asap.label || (locale === "ar" ? "في أقرب وقت" : "ASAP"))
+                  : timing?.kind === "slot"
+                  ? (() => {
+                      const dayLabel = fulfillment.days.find(d => d.date === timing.date)?.label || timing.date;
+                      const slotLabel = fulfillment.days.find(d => d.date === timing.date)?.slots.find(s => s.start === timing.start)?.label || `${timing.start}–${timing.end}`;
+                      return `${dayLabel}, ${slotLabel}`;
+                    })()
+                  : <span style={{ opacity: 0.4 }}>{locale === "ar" ? "غير محدد" : "Not selected"}</span>
+                }
+              </span>
+            </div>
+            {fulfillment.days.length > 0 && fulfillment.asap.available && (
+              timing?.kind === "asap" ? (
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={() => {
+                    const firstDay = fulfillment.days[0];
+                    if (firstDay && firstDay.slots.length > 0) {
+                      setTiming({ kind: "slot", date: firstDay.date, start: firstDay.slots[0].start, end: firstDay.slots[0].end });
+                    }
+                  }}
+                  style={{ fontSize: 11, padding: "4px 12px", flexShrink: 0 }}
+                >
+                  {tx("Change", "تغيير")}
+                </button>
+              ) : timing?.kind === "slot" ? (
+                <button
+                  className="btn btn-sm btn-text"
+                  onClick={() => setTiming({ kind: "asap" })}
+                  style={{ fontSize: 11, textDecoration: "underline", flexShrink: 0 }}
+                >
+                  {tx("Cancel", "إلغاء")}
+                </button>
+              ) : null
+            )}
+          </div>
+
+          {timing?.kind === "slot" && (
+            <div className="addr-grid" style={{ marginTop: 10 }}>
+              <div className="field">
+                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.6 }}>{tx("Date", "التاريخ")}</label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    className="select"
+                    style={{ appearance: "none", paddingInlineEnd: 34 }}
+                    value={timing.date}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      const dayObj = fulfillment.days.find(d => d.date === newDate);
+                      if (dayObj && dayObj.slots.length > 0) {
+                        setTiming({ kind: "slot", date: newDate, start: dayObj.slots[0].start, end: dayObj.slots[0].end });
+                      } else {
+                        setTiming({ kind: "slot", date: newDate, start: "", end: "" });
+                      }
+                    }}
+                  >
+                    <option value="" disabled>{tx("Select Date", "اختر التاريخ")}</option>
+                    {fulfillment.days.map((d) => (
+                      <option key={d.date} value={d.date}>{d.label}</option>
+                    ))}
+                  </select>
+                  <IconChevronDown width={16} height={16} style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }} />
+                </div>
+              </div>
+              <div className="field">
+                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.6 }}>{tx("Time", "الوقت")}</label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    className="select"
+                    style={{ appearance: "none", paddingInlineEnd: 34 }}
+                    value={`${timing.start}|${timing.end}`}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && val !== "|") {
+                        const [start, end] = val.split("|");
+                        setTiming({ kind: "slot", date: timing.date, start, end });
+                      }
+                    }}
+                    disabled={!timing.date}
+                  >
+                    <option value="|" disabled>{tx("Select Time", "اختر الوقت")}</option>
+                    {fulfillment.days.find(d => d.date === timing.date)?.slots.map(s => (
+                      <option key={`${s.start}-${s.end}`} value={`${s.start}|${s.end}`}>{s.label}</option>
+                    ))}
+                  </select>
+                  <IconChevronDown width={16} height={16} style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!timing && (
+            <div style={{ position: "relative", marginTop: 8 }}>
+              <select
+                className="select"
+                style={{ appearance: "none", paddingInlineEnd: 34 }}
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "asap") setTiming({ kind: "asap" });
+                  else if (val === "schedule_trigger") {
+                    const firstDay = fulfillment.days[0];
+                    if (firstDay && firstDay.slots.length > 0) {
+                      setTiming({ kind: "slot", date: firstDay.date, start: firstDay.slots[0].start, end: firstDay.slots[0].end });
+                    }
+                  }
+                }}
+              >
+                <option value="" disabled>{locale === "ar" ? "اختر موعد التسليم" : "Select delivery time / schedule"}</option>
+                {fulfillment.asap.available && <option value="asap">{fulfillment.asap.label || (locale === "ar" ? "في أقرب وقت" : "ASAP")}</option>}
+                {fulfillment.days.length > 0 && <option value="schedule_trigger">{tx("Schedule for later", "جدولة لوقت لاحق")}</option>}
+              </select>
+              <IconChevronDown width={16} height={16} style={{ position: "absolute", insetInlineEnd: 10, top: 14, pointerEvents: "none" }} />
+            </div>
+          )}
+          {fieldErrors.timing && <span className="field-error" style={{ marginTop: 4 }}>{fieldErrors.timing}</span>}
+        </div>
+
+        {/* Payment – in summary */}
+        {availablePayments.length > 0 && (
+          <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.55, display: "block", marginBottom: 8 }}>{t("paymentMethod")}</span>
+            <div className="stack" style={{ gap: 8 }}>
+              {availablePayments.map((p) => (
+                <label key={p.value} className="opt-row" style={{ cursor: "pointer" }}>
+                  <span>{tx(p.label, p.ar_label)}</span>
+                  <input type="radio" name="payment" checked={payment === p.value} onChange={() => setPayment(p.value)} />
+                </label>
+              ))}
+            </div>
+            {fieldErrors.payment && <span className="field-error" style={{ marginTop: 4 }}>{fieldErrors.payment}</span>}
+          </div>
+        )}
         <div className="field" style={{ marginBottom: 14 }}>
           <label>{t("couponCode")}</label>
           <div className="row" style={{ gap: 8 }}>
@@ -711,11 +957,11 @@ export default function CheckoutView({
 }
 
 function Field({
-  label, value, onChange, err,
-}: { label: string; value: string; onChange: (v: string) => void; err?: string }) {
+  label, value, onChange, err, req
+}: { label: string; value: string; onChange: (v: string) => void; err?: string; req?: boolean }) {
   return (
     <div className="field">
-      <label>{label}</label>
+      <label>{label}{req && <span className="req">*</span>}</label>
       <input className="input" value={value} onChange={(e) => onChange(e.target.value)} />
       {err && <span className="field-error">{err}</span>}
     </div>
@@ -733,6 +979,48 @@ function SummaryRow({ label, value, accent }: { label: string; value: string; ac
 
 const checkoutCss = `
 @media(min-width:900px){.checkout-grid{grid-template-columns:1fr 360px}}
+.checkout-sections-container {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+.checkout-section {
+  padding-block: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.checkout-section:last-child {
+  border-bottom: none;
+  padding-bottom: 8px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: block;
+}
+.req { color: var(--error); margin-inline-start: 4px; }
+.country-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.country-chip {
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+.country-chip--on {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius-pill);overflow:hidden;padding:3px;background:var(--cream)}
 .seg__btn{padding:10px 24px;background:transparent;border:none;border-radius:var(--radius-pill);font-family:var(--font-sans);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;transition:all 0.2s}
 .seg__btn--on{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.12)}
