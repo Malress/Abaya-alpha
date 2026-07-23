@@ -3,10 +3,24 @@ import { loadBoot, getLocale } from "@/lib/ordable/boot";
 import { getSmartCategories, getReviews } from "@/lib/ordable/endpoints";
 import { pick } from "@/lib/i18n";
 import { categorySlug } from "@/lib/slug";
+import { productSlug } from "@/lib/slug";
 import ProductCard from "@/components/product/ProductCard";
 import Reviews from "@/components/product/Reviews";
 import HeroCarousel, { type HeroSlide } from "@/components/layout/HeroCarousel";
 import type { ProductShort } from "@/lib/ordable/types";
+import { formatMoney, productImage, displayPrice } from "@/lib/format";
+
+// Seed changes every 12 hours → products randomise a few times a day
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  let s = seed;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default async function HomePage() {
   const [boot, locale] = await Promise.all([loadBoot(), getLocale()]);
@@ -112,6 +126,14 @@ export default async function HomePage() {
     }
   }
 
+  // Seed changes every 12 h → new featured picks a few times a day
+  const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 12));
+
+  // Pick 2 featured products from across the first 2 rows (with images)
+  const topRowsProducts = rows.slice(0, 2).flatMap(r => r.products).filter(p => p.photo_medium || p.photo);
+  const globalFeatured = seededShuffle(topRowsProducts, seed).slice(0, 2);
+  const globalFeaturedIds = new Set(globalFeatured.map(p => p.id));
+
   return (
     <>
       {slides.length > 0 && <HeroCarousel slides={slides} />}
@@ -139,25 +161,74 @@ export default async function HomePage() {
         </section>
       )}
 
-      {rows.map((row) => (
-        <section key={row.key} className="section-tight container">
-          <div className="section-head">
-            <h2 className="section-title" style={{ fontSize: "clamp(26px,4vw,40px)" }}>
-              {row.title}
-            </h2>
-            {row.href && (
-              <Link href={row.href} className="link-underline">
-                {tx("View all", "عرض الكل")}
+      {/* Featured duo — edge-to-edge */}
+      {globalFeatured.length > 0 && (
+        <div className={`featured-duo${globalFeatured.length === 1 ? " featured-duo--single" : ""}`}>
+          {globalFeatured.map((p) => {
+            const img = productImage(p, "medium") || productImage(p, "small");
+            const name = tx(p.name, p.ar_name);
+            const catName = tx(p.category_name, p.category_ar_name);
+            const { price } = displayPrice(p);
+            const href = `/product/${categorySlug({ id: p.category_id ?? 0, name: p.category_name ?? "", slug: null })}/${productSlug(p)}`;
+            return (
+              <Link key={p.id} href={href} className="featured-panel">
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt={name} className="featured-panel__img" loading="lazy" />
+                ) : (
+                  <div className="featured-panel__img" style={{ background: "var(--sand-soft)" }} />
+                )}
+                <div className="featured-panel__overlay" />
+                <div className="featured-panel__info">
+                  {catName && <span className="featured-panel__cat">{catName}</span>}
+                  <p className="featured-panel__name">{name}</p>
+                  <span className="featured-panel__price">
+                    {formatMoney(price, config.base_currency, locale)}
+                  </span>
+                  <span className="featured-panel__btn">
+                    {tx("View Product", "عرض المنتج")}
+                  </span>
+                </div>
               </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {rows.map((row) => {
+        // Remaining products after removing the featured ones
+        const rest = row.products.filter((p) => !globalFeaturedIds.has(p.id)).slice(0, 8);
+        if (rest.length === 0) return null;
+
+        return (
+          <section key={row.key} className="section-tight">
+            {/* Section header */}
+            <div className="container">
+              <div className="section-head">
+                <h2 className="section-title" style={{ fontSize: "clamp(26px,4vw,40px)" }}>
+                  {row.title}
+                </h2>
+                {row.href && (
+                  <Link href={row.href} className="link-underline">
+                    {tx("View all", "عرض الكل")}
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Remaining products grid */}
+            {rest.length > 0 && (
+              <div className="container">
+                <div className="product-grid">
+                  {rest.map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-          <div className="product-grid">
-            {row.products.slice(0, 8).map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
-      ))}
+          </section>
+        );
+      })}
 
       {rows.length === 0 && (
         <section className="section container center">
@@ -179,3 +250,4 @@ export default async function HomePage() {
     </>
   );
 }
+

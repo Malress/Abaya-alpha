@@ -29,9 +29,9 @@
   --shadow-md: 0 8px 30px rgb(28 26 23 / 8%);
   --shadow-lg: 0 20px 60px rgb(28 26 23 / 14%);
 
-  --radius-xs: 2px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-xs: 16px;
+  --radius-sm: 16px;
+  --radius-md: 16px;
   --radius-lg: 16px;
   --radius-pill: 999px;
 
@@ -198,11 +198,25 @@ h4 {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
   transition: all 0.25s var(--ease);
   white-space: nowrap;
+  position: relative;
+}
+.btn::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: width 0.2s var(--ease);
 }
 .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
-  background: var(--ink-soft);
+}
+.btn:hover::after {
+  width: calc(100% - 52px);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -214,8 +228,7 @@ h4 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 .btn-outline:hover {
-  background: var(--ink);
-  color: #fff;
+  /* background highlight removed in favor of underline */
 }
 .btn-block {
   width: 100%;
@@ -225,11 +238,17 @@ h4 {
   padding-inline: 36px;
   font-size: 13px;
 }
+.btn-lg:hover::after {
+  width: calc(100% - 72px);
+}
 .btn-sm {
   min-height: 38px;
   padding-inline: 16px;
   font-size: 11px;
   letter-spacing: 0.12em;
+}
+.btn-sm:hover::after {
+  width: calc(100% - 32px);
 }
 .btn-ghost {
   background: transparent;
@@ -237,7 +256,7 @@ h4 {
   color: var(--ink);
 }
 .btn-ghost:hover {
-  background: var(--sand-soft);
+  /* background: var(--sand-soft); removed */
 }
 .link-underline {
   border-bottom: 1px solid currentColor;
@@ -341,6 +360,8 @@ h4 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(14px, 2.4vw, 30px) clamp(12px, 2vw, 26px);
+  justify-items: center;
+  justify-content: center;
 }
 @media (min-width: 768px) {
   .product-grid {
@@ -351,6 +372,147 @@ h4 {
   .product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+/* Orphan last row — center up to the number of items */
+.product-grid .product-card {
+  width: 100%;
+}
+/* When there's only 1 card (single product rows) — constrain and center it */
+.product-grid:has(.product-card:first-child:last-child) {
+  grid-template-columns: minmax(0, 320px);
+}
+
+
+/* ============================================================
+   Featured Duo — editorial full-bleed panels
+   ============================================================ */
+.featured-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: clamp(40px, 6vw, 80px);
+  height: calc(100svh - 64px);
+}
+.featured-duo--single {
+  grid-template-columns: 1fr;
+}
+
+.featured-panel {
+  position: relative;
+  height: 100%;
+  overflow: clip;
+  background: var(--sand-soft);
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  view-timeline-name: --panel;
+}
+.featured-duo--single .featured-panel {
+  /* inherit height */
+}
+
+.featured-panel__img {
+  position: absolute;
+  top: -15%;
+  left: 0;
+  width: 100%;
+  height: 130%;
+  object-fit: cover;
+  transition: scale 0.9s var(--ease);
+  display: block;
+}
+@supports ((animation-timeline: view()) and (animation-range: entry)) {
+  .featured-panel__img {
+    animation: parallax-img linear both;
+    animation-timeline: --panel;
+    animation-range: entry 0% exit 100%;
+  }
+}
+@keyframes parallax-img {
+  from {
+    translate: 0 -10%;
+  }
+  to {
+    translate: 0 10%;
+  }
+}
+
+.featured-panel:hover .featured-panel__img {
+  scale: 1.05;
+}
+.featured-panel__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.12) 50%, transparent 100%);
+  pointer-events: none;
+}
+.featured-panel__info {
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  padding: clamp(20px, 3.5vw, 36px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.featured-panel__cat {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+}
+.featured-panel__name {
+  font-family: var(--font-body);
+  font-size: clamp(17px, 2.2vw, 24px);
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.3;
+  margin: 0;
+}
+.featured-panel__price {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.featured-panel__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 11px 24px;
+  border: 1px solid rgba(255,255,255,0.8);
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  align-self: flex-start;
+  transition: background 0.25s, color 0.25s;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+.featured-panel__btn::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: width 0.2s var(--ease);
+}
+.featured-panel:hover .featured-panel__btn {
+  /* background: rgba(255,255,255,0.15); removed */
+}
+.featured-panel:hover .featured-panel__btn::after {
+  width: calc(100% - 48px);
 }
 
 .product-card {
@@ -501,6 +663,7 @@ h4 {
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: 0 12px 48px -12px rgba(0, 0, 0, 0.12), 0 4px 16px -4px rgba(0, 0, 0, 0.06);
+  overflow: visible;
 }
 .header__bar {
   display: grid;
@@ -541,7 +704,21 @@ h4 {
   position: relative;
 }
 .iconbtn:hover {
-  background: var(--sand-soft);
+  /* background: var(--sand-soft); removed in favor of underline */
+}
+.iconbtn::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: var(--ink);
+  transition: width 0.2s var(--ease);
+}
+.iconbtn:hover::after {
+  width: 16px;
 }
 
 .nav-action {
@@ -560,9 +737,24 @@ h4 {
   cursor: pointer;
   text-decoration: none;
   transition: background 0.2s ease;
+  position: relative;
 }
 .nav-action:hover {
-  background: var(--sand-soft);
+  /* background: var(--sand-soft); removed */
+}
+.nav-action::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: var(--ink);
+  transition: width 0.2s var(--ease);
+}
+.nav-action:hover::after {
+  width: calc(100% - 24px);
 }
 .iconbtn .count {
   position: absolute;
@@ -670,9 +862,24 @@ h4 {
   height: 44px;
   transition: background 0.2s ease;
   cursor: pointer;
+  position: relative;
 }
 .langbtn:hover {
-  background: var(--sand-soft);
+  /* background: var(--sand-soft); removed */
+}
+.langbtn::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: var(--ink);
+  transition: width 0.2s var(--ease);
+}
+.langbtn:hover::after {
+  width: calc(100% - 32px);
 }
 
 /* Search overlay */
@@ -1008,7 +1215,7 @@ h4 {
 .hero__line {
   width: 32px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.4);
   border: none;
   cursor: pointer;
