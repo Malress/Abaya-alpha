@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ordable Storefront Theme"
+  short_description: "Build polished API-driven Ordable themes"
+  default_prompt: "Use $build-ordable-storefront-theme to build a responsive bilingual Ordable storefront theme from the local API configuration."
