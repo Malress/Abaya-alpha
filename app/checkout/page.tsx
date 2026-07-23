@@ -14,9 +14,8 @@ export default async function CheckoutPage() {
   const [boot, locale] = await Promise.all([loadBoot(), getLocale()]);
   if (!boot) return null;
 
-  const branch = boot.branches[0];
   const [areas, payments, promotions, countries] = await Promise.all([
-    getAreas([boot.branchId]).catch(() => []),
+    getAreas(boot.branches.map((b) => b.id)).catch(() => []),
     getPaymentMethods().catch(() => []),
     getPromotions(boot.branchId).catch(() => []),
     getCountries().catch(() => []),
@@ -33,7 +32,7 @@ export default async function CheckoutPage() {
         {pick(locale, "Checkout", "الدفع")}
       </h1>
       <CheckoutView
-        branch={branch}
+        branches={boot.branches}
         areas={areas}
         payments={payments}
         promotions={promotions.filter((p) => !p.code)}

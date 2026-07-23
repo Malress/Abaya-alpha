@@ -2,6 +2,7 @@
 
 import { useStore } from "@/components/providers/StoreProvider";
 import { IconInstagram, IconWhatsapp, IconTiktok } from "@/components/ui/icons";
+import { compressSchedule } from "@/lib/hours";
 
 function normalizeUrl(u?: string): string | undefined {
   if (!u) return undefined;
@@ -23,7 +24,7 @@ export default function ContactPage() {
     { name: "YouTube", key: "youtube", url: normalizeUrl(config.youtube_link) },
   ].filter((s) => s.url);
 
-  const primaryBranch = branches[0];
+
 
   return (
     <div className="container container-narrow" style={{ paddingBlock: "clamp(32px, 5vw, 64px)" }}>
@@ -45,9 +46,10 @@ export default function ContactPage() {
         }}
       >
         {/* Contact Info Card */}
-        <div
-          style={{
-            background: "var(--ivory)",
+        {(config.contact_number || config.email) && (
+          <div
+            style={{
+              background: "var(--ivory)",
             border: "1px solid var(--line)",
             borderRadius: 16,
             padding: 32,
@@ -57,16 +59,6 @@ export default function ContactPage() {
             gap: 20,
           }}
         >
-          <h2 style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)" }}>
-            {tx(config.name, config.ar_name)}
-          </h2>
-
-          {config.slogan && (
-            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-              {tx(config.slogan, config.ar_slogan)}
-            </p>
-          )}
-
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 8 }}>
             {config.contact_number && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -75,7 +67,7 @@ export default function ContactPage() {
                 </span>
                 <a
                   href={`tel:${config.contact_number}`}
-                  style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", textDecoration: "none" }}
+                  style={{ fontSize: 16, fontWeight: 500, color: "var(--brand)", textDecoration: "none" }}
                 >
                   {config.contact_number}
                 </a>
@@ -89,50 +81,102 @@ export default function ContactPage() {
                 </span>
                 <a
                   href={`mailto:${config.email}`}
-                  style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", textDecoration: "none" }}
+                  style={{ fontSize: 16, fontWeight: 500, color: "var(--brand)", textDecoration: "none" }}
                 >
                   {config.email}
                 </a>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Branch / Location Card */}
-        {primaryBranch && (
-          <div
-            style={{
-              background: "var(--ivory)",
-              border: "1px solid var(--line)",
-              borderRadius: 16,
-              padding: 32,
-              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.04)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-            }}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)" }}>
-              {tx("Branch & Location", "الفرع والموقع")}
-            </h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <h3 style={{ fontSize: 16, fontWeight: 600 }}>{tx(primaryBranch.name, primaryBranch.ar_name)}</h3>
-                {(() => {
-                  const areaStr = typeof primaryBranch.area === "object" ? tx(primaryBranch.area?.name, primaryBranch.area?.ar_name) : primaryBranch.area;
-                  const countryStr = typeof primaryBranch.country === "object" ? tx(primaryBranch.country?.name, primaryBranch.country?.ar_name) : primaryBranch.country;
-                  const locationText = [areaStr, countryStr].filter(Boolean).join(", ");
-                  return locationText ? (
-                    <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>
-                      📍 {locationText}
-                    </p>
-                  ) : null;
-                })()}
-              </div>
-            </div>
           </div>
         )}
+
+        {/* Branch / Location Cards */}
+        {branches.map((b) => {
+          const areaStr = typeof b.area === "object" ? tx(b.area?.name, b.area?.ar_name) : b.area;
+          const countryStr = typeof b.country === "object" ? tx(b.country?.name, b.country?.ar_name) : b.country;
+          const locationText = [areaStr, countryStr].filter(Boolean).join(", ");
+          const hasMapLink = b.lat && b.lng;
+          const hours = b.pickup_working_hours || b.delivery_working_hours;
+          const formattedHours = compressSchedule(hours, tx);
+          const phone = (b as any).contact_number || (b as any).phone;
+
+          return (
+            <div
+              key={b.id}
+              style={{
+                background: "var(--ivory)",
+                border: "1px solid var(--line)",
+                borderRadius: 16,
+                padding: 32,
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.04)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+              }}
+            >
+              <h2 style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)" }}>
+                {tx(b.name, b.ar_name)}
+              </h2>
+  
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {phone && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
+                      {tx("Phone", "الهاتف")}
+                    </span>
+                    <a
+                      href={`tel:${phone}`}
+                      style={{ fontSize: 15, fontWeight: 500, color: "var(--brand)", textDecoration: "none" }}
+                    >
+                      {phone}
+                    </a>
+                  </div>
+                )}
+
+                {locationText && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
+                      {tx("Address", "العنوان")}
+                    </span>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
+                      📍 {locationText}
+                    </p>
+                  </div>
+                )}
+
+                {formattedHours.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
+                      {tx("Working Hours", "ساعات العمل")}
+                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {formattedHours.map((schedule, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-secondary)" }}>
+                          <span style={{ fontWeight: 500, color: "var(--ink)" }}>{schedule.label}</span>
+                          <span>{schedule.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {hasMapLink && (
+                  <div style={{ marginTop: 8, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
+                    <iframe
+                      width="100%"
+                      height="200"
+                      style={{ border: 0, display: "block" }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://maps.google.com/maps?q=${b.lat},${b.lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    ></iframe>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Social Media Section */}

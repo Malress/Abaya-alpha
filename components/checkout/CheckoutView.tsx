@@ -29,14 +29,14 @@ interface Me {
 }
 
 export default function CheckoutView({
-  branch,
+  branches,
   areas,
   payments,
   promotions,
   countries,
   agreements,
 }: {
-  branch: Branch;
+  branches: Branch[];
   areas: Area[];
   payments: PaymentMethod[];
   promotions: Promotion[];
@@ -51,11 +51,22 @@ export default function CheckoutView({
   const [showAuth, setShowAuth] = useState(false);
   const [wallet, setWallet] = useState(0);
 
-  const canDelivery = branch?.enable_delivery ?? true;
-  const canPickup = branch?.enable_pickup ?? false;
-  const [isDelivery, setIsDelivery] = useState(canDelivery);
-
   const [areaId, setAreaId] = useState<number | null>(null);
+  
+  const activeBranch = useMemo(() => {
+    if (areaId) {
+      const area = areas.find(a => a.id === areaId);
+      if (area?.branch_id) {
+        return branches.find(b => b.id === area.branch_id) || branches[0];
+      }
+    }
+    return branches[0];
+  }, [areaId, areas, branches]);
+
+  const canDelivery = activeBranch?.enable_delivery ?? true;
+  const canPickup = activeBranch?.enable_pickup ?? false;
+  const [isDelivery, setIsDelivery] = useState(true);
+
   const [addr, setAddr] = useState({
     block: "", street: "", building: "", floor: "", apartment: "", additional: "",
   });
@@ -156,18 +167,19 @@ export default function CheckoutView({
   }, [config.enable_wallet, config.enable_wallet_staff]);
 
   const fulfillment = useMemo(
-    () => (branch ? computeFulfillment(branch, isDelivery, locale) : { asap: { available: false }, days: [] }),
-    [branch, isDelivery, locale],
+    () => (activeBranch ? computeFulfillment(activeBranch, isDelivery, locale) : { asap: { available: false }, days: [] }),
+    [activeBranch, isDelivery, locale],
   );
 
   // Preselect single payment method.
   const availablePayments = useMemo(() => {
-    let list = payments;
-    if (branch?.disable_cash) list = list.filter((p) => p.value !== "cash" && p.value !== "kod");
-    if (isGift && config.disable_cash_for_gift)
+    let list = [...payments];
+    if (activeBranch?.disable_cash) list = list.filter((p) => p.value !== "cash" && p.value !== "kod");
+    if (isGift && config.disable_cash_for_gift) {
       list = list.filter((p) => p.value !== "cash" && p.value !== "kod");
+    }
     return list;
-  }, [payments, branch, isGift, config.disable_cash_for_gift]);
+  }, [payments, activeBranch, isGift, config.disable_cash_for_gift]);
 
   useEffect(() => {
     if (availablePayments.length === 1) setPayment(availablePayments[0].value);
@@ -199,7 +211,8 @@ export default function CheckoutView({
         (smartMap[s.type] ??= []).push({ id: s.id, promo: s.promo });
       }
       return {
-        branch_id: branch?.id,
+        channel: "web",
+        branch_id: activeBranch?.id,
         is_delivery: isDelivery,
         fulfillment_date: timing?.kind === "slot" ? timing.date : fulfillment.asap.date,
         fulfillment_slot_start: timing?.kind === "slot" ? timing.start : fulfillment.asap.start,
@@ -225,13 +238,13 @@ export default function CheckoutView({
         dry_run: dryRun,
       };
     },
-    [branch, isDelivery, timing, fulfillment, name, phone, email, dialCode, areaId, addr, lines, payment, locale, appliedCoupon, promotions, me, useWallet, usePoints, isGift, gift],
+    [activeBranch, isDelivery, timing, fulfillment, name, phone, email, dialCode, areaId, addr, lines, payment, locale, appliedCoupon, promotions, me, useWallet, usePoints, isGift, gift],
   );
 
   // Dry-run validation whenever the money-affecting inputs change.
   const dryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!hydrated || lines.length === 0 || !branch) return;
+    if (!hydrated || lines.length === 0 || !activeBranch) return;
     if (isDelivery && !areaId) return;
     if (dryTimer.current) clearTimeout(dryTimer.current);
     dryTimer.current = setTimeout(async () => {

@@ -48,11 +48,25 @@ export function productImage(
   return order.find((x): x is string => Boolean(x)) ?? p.photo ?? null;
 }
 
-// Derive a "from" price for configurable products whose base price is 0.
-export function displayPrice(p: ProductShort): { price: number; isFrom: boolean } {
+export function displayPrice(p: any): { price: number; isFrom: boolean } {
   if (p.price > 0) return { price: p.price, isFrom: false };
   if (typeof p.least_price === "number" && p.least_price > 0) {
     return { price: p.least_price, isFrom: true };
   }
+  
+  if (p.price === 0 && Array.isArray(p.options)) {
+    const requiredOptions = p.options.filter((o: any) => o.is_required);
+    let cheapestRequired = 0;
+    for (const opt of requiredOptions) {
+      if (Array.isArray(opt.choices) && opt.choices.length > 0) {
+        const minChoice = Math.min(...opt.choices.map((c: any) => c.price || 0));
+        cheapestRequired += minChoice;
+      }
+    }
+    if (cheapestRequired > 0) {
+      return { price: cheapestRequired, isFrom: true };
+    }
+  }
+  
   return { price: p.price, isFrom: false };
 }

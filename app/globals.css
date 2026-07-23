@@ -198,25 +198,11 @@ h4 {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
   transition: all 0.25s var(--ease);
   white-space: nowrap;
-  position: relative;
-}
-.btn::after {
-  content: "";
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 1.5px;
-  background: currentColor;
-  transition: width 0.2s var(--ease);
 }
 .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
-}
-.btn:hover::after {
-  width: calc(100% - 52px);
+  background: var(--ink-soft);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -228,7 +214,8 @@ h4 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 .btn-outline:hover {
-  /* background highlight removed in favor of underline */
+  background: var(--ink);
+  color: #fff;
 }
 .btn-block {
   width: 100%;
@@ -238,17 +225,11 @@ h4 {
   padding-inline: 36px;
   font-size: 13px;
 }
-.btn-lg:hover::after {
-  width: calc(100% - 72px);
-}
 .btn-sm {
   min-height: 38px;
   padding-inline: 16px;
   font-size: 11px;
   letter-spacing: 0.12em;
-}
-.btn-sm:hover::after {
-  width: calc(100% - 32px);
 }
 .btn-ghost {
   background: transparent;
@@ -256,7 +237,7 @@ h4 {
   color: var(--ink);
 }
 .btn-ghost:hover {
-  /* background: var(--sand-soft); removed */
+  background: var(--sand-soft);
 }
 .link-underline {
   border-bottom: 1px solid currentColor;
@@ -483,9 +464,9 @@ h4 {
   justify-content: center;
   margin-top: 14px;
   padding: 11px 24px;
-  border: 1px solid rgba(255,255,255,0.8);
-  background: transparent;
-  color: #fff;
+  border: none;
+  background: #fff;
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 12px;
   letter-spacing: 0.16em;
@@ -495,24 +476,9 @@ h4 {
   transition: background 0.25s, color 0.25s;
   cursor: pointer;
   border-radius: var(--radius-lg);
-  position: relative;
-}
-.featured-panel__btn::after {
-  content: "";
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 1.5px;
-  background: currentColor;
-  transition: width 0.2s var(--ease);
 }
 .featured-panel:hover .featured-panel__btn {
-  /* background: rgba(255,255,255,0.15); removed */
-}
-.featured-panel:hover .featured-panel__btn::after {
-  width: calc(100% - 48px);
+  background: #f0f0f0;
 }
 
 .product-card {
@@ -714,7 +680,7 @@ h4 {
   transform: translateX(-50%);
   width: 0;
   height: 1.5px;
-  background: var(--ink);
+  background: var(--brand);
   transition: width 0.2s var(--ease);
 }
 .iconbtn:hover::after {
@@ -750,7 +716,7 @@ h4 {
   transform: translateX(-50%);
   width: 0;
   height: 1.5px;
-  background: var(--ink);
+  background: var(--brand);
   transition: width 0.2s var(--ease);
 }
 .nav-action:hover::after {
@@ -875,7 +841,7 @@ h4 {
   transform: translateX(-50%);
   width: 0;
   height: 1.5px;
-  background: var(--ink);
+  background: var(--brand);
   transition: width 0.2s var(--ease);
 }
 .langbtn:hover::after {
